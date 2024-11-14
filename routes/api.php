@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/kandang/{id}', [KandangController::class, 'update'])->name('api.kandang.edit');
     Route::post('/kandang', [KandangController::class, 'create'])->name('api.kandang.create');
     Route::delete('/kandang/{id}', [KandangController::class, 'delete'])->name('api.kandang.delete');
+    Route::get('kandang/{id_kandang}/unggas-info', [KandangController::class, 'getUnggasInfo'])->name('api.kandang.info');
 });
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\Kandang;
 use App\Models\User;
+use App\Models\LaporanHarian;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -142,4 +143,37 @@ class KandangController extends Controller
         ]);
     }
 
+    public function getUnggasInfo($id_kandang)
+    {
+        // Ambil data kandang berdasarkan ID
+        $kandang = Kandang::find($id_kandang);
+        if (!$kandang) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Kandang tidak ditemukan'
+            ], 404);
+        }
+
+        // Ambil populasi awal dari kolom `jumlah_unggas` pada data kandang
+        $populasiAwal = $kandang->jumlah_unggas;
+
+        // Hitung total kematian dan sakit dari tabel laporan_harians
+        $laporan = LaporanHarian::where('id_kandang', $id_kandang);
+
+        $totalKematian = $laporan->sum('kematian');
+        $totalSakit = $laporan->sum('jumlah_sakit');
+
+        // Hitung populasi sekarang: populasi awal - total kematian dan sakit
+        $populasiSekarang = max(0, $populasiAwal - ($totalKematian + $totalSakit));
+
+        return response()->json([
+            'status' => 200,
+            'data' => [
+                'populasi_awal' => $populasiAwal,
+                'populasi_sekarang' => $populasiSekarang,
+                'jumlah_sakit' => $totalSakit,
+                'jumlah_mati' => $totalKematian,
+            ]
+        ], 200);
+    }
 }

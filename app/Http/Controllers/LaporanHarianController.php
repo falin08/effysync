@@ -8,6 +8,7 @@ use App\Models\Penyakit;
 use App\Models\Pakan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 
 class LaporanHarianController extends Controller
 {
@@ -33,6 +34,9 @@ class LaporanHarianController extends Controller
             'jumlah_sakit' => 'nullable|integer|min:0',
             'id_penyakit' => 'nullable|exists:penyakits,id',
         ]);
+
+        // Ambil data user yang sedang login
+        $id_user = Auth::id();  // Mengambil ID pengguna yang sedang login
 
         // Ambil informasi dan ketersediaan pakan
         $pakan = Pakan::findOrFail($request->id_pakan);
