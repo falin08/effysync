@@ -24,10 +24,13 @@ class DashboardController extends Controller
         })->whereDate('created_at', now()->toDateString())->sum('telur');
 
         // 3. Diagram Pie: Ayam Sehat, Sakit, Mati
-        $dataKesehatan = LaporanHarian::whereHas('kandang', function ($query) {
-            $query->where('status', 'aktif');
-        })
-        ->selectRaw('SUM(jumlah_sakit) as sakit, SUM(kematian) as mati, SUM(jumlah_pakan) - SUM(jumlah_sakit) - SUM(kematian) as sehat')
+        $dataKesehatan = Kandang::join('laporan_harians', 'kandangs.id', '=', 'laporan_harians.id_kandang')
+        ->where('kandangs.status', 'aktif')
+        ->selectRaw('
+            SUM(laporan_harians.jumlah_sakit) as sakit,
+            SUM(laporan_harians.kematian) as mati,
+            SUM(kandangs.jumlah_unggas) - SUM(laporan_harians.jumlah_sakit) - SUM(laporan_harians.kematian) as sehat
+        ')
         ->first();
 
         $dataKesehatan = $dataKesehatan ? [
