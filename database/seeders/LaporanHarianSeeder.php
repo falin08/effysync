@@ -21,7 +21,6 @@ class LaporanHarianSeeder extends Seeder
         LaporanHarian::create([
             'id_kandang' => $kandang->id,
             'id_user' => $user->id,
-            'sesi' => 'pagi',
             'id_pakan' => $pakan->id,
             'jumlah_pakan' => 50, // dalam kg
             'telur' => 10,
@@ -33,7 +32,6 @@ class LaporanHarianSeeder extends Seeder
         LaporanHarian::create([
             'id_kandang' => $kandang->id,
             'id_user' => $user->id,
-            'sesi' => 'sore',
             'id_pakan' => $pakan->id,
             'jumlah_pakan' => 30, // dalam kg
             'telur' => 8,

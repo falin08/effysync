@@ -6,6 +6,7 @@ use App\Http\Controllers\PakanController;
 use App\Http\Controllers\PenyakitController;
 use App\Http\Controllers\LaporanHarianController;
 use App\Http\Controllers\AccessRequestController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
@@ -42,11 +43,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/kandang', [KandangController::class, 'create'])->name('api.kandang.create');
     Route::delete('/kandang/{id}', [KandangController::class, 'delete'])->name('api.kandang.delete');
     Route::get('kandang/{id_kandang}/unggas-info', [KandangController::class, 'getUnggasInfo'])->name('api.kandang.info');
+    Route::get('kandang/{id_kandang}/history-penyakit', [KandangController::class, 'getHistoryPenyakit'])->name('api.kandang.historypenyakit');
 });
 
 Route::middleware('auth:sanctum')->group(function () {
-    // Route::post('/laporan-harian', [LaporanHarianController::class, 'store']);
-    Route::get('/laporan-harian/create/{id_kandang}', [LaporanHarianController::class, 'create']);
     Route::post('/laporan-harian/{id_kandang}', [LaporanHarianController::class, 'store']);
     Route::get('/laporan-harian', [LaporanHarianController::class, 'index'])->name('api.laporan.index');
+});
+
+Route::middleware('auth:sanctum', 'role:admin')->group(function () {
+    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('api.dashboard');
 });

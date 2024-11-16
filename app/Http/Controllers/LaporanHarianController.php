@@ -12,31 +12,27 @@ use Illuminate\Support\Facades\Auth;
 
 class LaporanHarianController extends Controller
 {
-    public function create($id_kandang)
-    {
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'ID Kandang berhasil diambil.',
-            'data' => [
-                'id_kandang' => $id_kandang,
-            ],
-        ], Response::HTTP_OK);
-    }
-
     public function store(Request $request, $id_kandang)
     {
         $request->validate([
-            'sesi' => 'required|in:pagi,sore',
             'id_pakan' => 'required|exists:pakans,id',
             'jumlah_pakan' => 'required|numeric|min:0',
             'telur' => 'nullable|integer|min:0',
             'kematian' => 'nullable|integer|min:0',
             'jumlah_sakit' => 'nullable|integer|min:0',
             'id_penyakit' => 'nullable|exists:penyakits,id',
+        ],
+        [
+            'id_penyakit.required_if' => 'Gejala penyakit harus dipilih jika ada unggas sakit.',
         ]);
-
-        // Ambil data user yang sedang login
-        $id_user = Auth::id();  // Mengambil ID pengguna yang sedang login
+        
+        // Validasi tambahan jika jumlah sakit diisi, id_penyakit harus diisi
+        if ($request->jumlah_sakit > 0 && !$request->id_penyakit) {
+            return response()->json([
+                'status' => Response::HTTP_BAD_REQUEST,
+                'message' => 'Jika jumlah sakit diisi, gejala penyakit harus dipilih.',
+            ], Response::HTTP_BAD_REQUEST);
+        }
 
         // Ambil informasi dan ketersediaan pakan
         $pakan = Pakan::findOrFail($request->id_pakan);
@@ -57,10 +53,12 @@ class LaporanHarianController extends Controller
         $penyakit = null;
         $pengobatan = null;
         $nama_penyakit = null;
+        $deskripsi_penyakit = null;
         if ($request->id_penyakit) {
             $penyakit = Penyakit::find($request->id_penyakit);
             $pengobatan = $penyakit ? $penyakit->pengobatan : null;
             $nama_penyakit = $penyakit ? $penyakit->nama: null;
+            $deskripsi_penyakit = $penyakit ? $penyakit->deskripsi: null;
         }
 
         // Kurangi stok pakan
@@ -71,7 +69,6 @@ class LaporanHarianController extends Controller
         $laporan = LaporanHarian::create([
             'id_kandang' => $id_kandang,
             'id_user' => $request->user()->id,
-            'sesi' => $request->sesi,
             'id_pakan' => $request->id_pakan,
             'jumlah_pakan' => $request->jumlah_pakan,
             'telur' => $request->telur ?? 0,
@@ -80,13 +77,21 @@ class LaporanHarianController extends Controller
             'id_penyakit' => $request->id_penyakit,
         ]);
 
+        // Tentukan apakah alert perlu ditampilkan
+        $showAlert = $request->jumlah_sakit > 0 || $request->id_penyakit !== null;
+
         return response()->json([
             'status' => Response::HTTP_CREATED,
             'message' => 'Laporan harian berhasil ditambahkan dan stok pakan diperbarui.',
+            'show_alert' => $showAlert,
+            'alert_message' => $showAlert 
+                ? 'Penanganan unggas yang sakit dapat dilihat pada menu history penyakit.' 
+                : null,
             'data' => [
                 'laporan' => $laporan,
                 'pengobatan' => $pengobatan, // Mengembalikan pengobatan di response
                 'nama_penyakit' => $nama_penyakit, // Mengembalikan nama penyakit
+                'deskripsi_penyakit' => $deskripsi_penyakit, // Mengembalikan nama penyakit
                 'jenis_pakan' => $jenis_pakan,
                 'nama_pakan' => $nama_pakan,
             ],

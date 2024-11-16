@@ -28,27 +28,6 @@ class KandangController extends Controller
             'data' => $kandangs,
         ]);
     }
-     // Mengambil semua data kandang yang aktif untuk pengguna
-    //  public function indexUser()
-    //  {
-    //      $kandangs = Kandang::where('status', 'aktif')->get();
-    //      return response()->json([
-    //          'status' => Response::HTTP_OK,
-    //          'message' => "success",
-    //          'data' => $kandangs,
-    //      ]);
-    //  }
- 
-    //  // Mengambil semua data kandang untuk admin (aktif dan tidak aktif)
-    //  public function indexAdmin()
-    //  {
-    //      $kandangs = Kandang::all();
-    //      return response()->json([
-    //          'status' => Response::HTTP_OK,
-    //          'message' => "success",
-    //          'data' => $kandangs,
-    //      ]);
-    //  }
     
     // Menambahkan kandang baru
     public function create(Request $request)
@@ -57,11 +36,13 @@ class KandangController extends Controller
             'kode' => 'required|string|max:255|unique:kandangs,kode',
             'jumlah_unggas' => 'required|integer|min:1',
             'jenis_unggas' => 'required|string',
-            'status' => 'required|in:aktif,tak aktif',
         ]);
 
         // Set deactivated_at menjadi null saat membuat kandang baru
-        $kandang = Kandang::create(array_merge($request->all(), ['deactivated_at' => null]));
+        $kandang = Kandang::create(array_merge($request->all(), [
+            'deactivated_at' => null,
+            'status' => 'aktif'
+        ]));
 
         return response()->json([
             'status' => Response::HTTP_CREATED,
@@ -116,11 +97,10 @@ class KandangController extends Controller
         // Update deactivated_at jika status menjadi tidak aktif
         if ($request->status === 'tidak aktif') {
             $kandang->deactivated_at = now();
-            $kandang->status = 'tidak aktif'; // Mengupdate status
         } else {
-            $kandang->deactivated_at = null; // Reset jika diaktifkan kembali
-            $kandang->status = 'aktif'; // Mengupdate status
+            $kandang->deactivated_at = null;
         }
+        $kandang->status = $request->status ?? 'aktif'; // Mengupdate status sesuai request
 
         $kandang->save();
 
@@ -166,6 +146,13 @@ class KandangController extends Controller
         // Hitung populasi sekarang: populasi awal - total kematian dan sakit
         $populasiSekarang = max(0, $populasiAwal - ($totalKematian + $totalSakit));
 
+        // Hitung deplesi unggas (jumlah sakit + mati)
+        $deplesiUnggas = $totalKematian + $totalSakit;
+
+        // Menghitung persentase kematian dan tingkat kesehatan
+        $persentaseKematian = ($populasiAwal > 0) ? ($totalKematian / $populasiAwal) * 100 : 0;
+        $tingkatKesehatan = ($populasiAwal > 0) ? ($populasiSekarang / $populasiAwal) * 100 : 0;
+        
         return response()->json([
             'status' => 200,
             'data' => [
@@ -173,6 +160,46 @@ class KandangController extends Controller
                 'populasi_sekarang' => $populasiSekarang,
                 'jumlah_sakit' => $totalSakit,
                 'jumlah_mati' => $totalKematian,
+                'deplesi_unggas' => $deplesiUnggas, 
+                'persentase_kematian' => $persentaseKematian,
+                'tingkat_kesehatan' => $tingkatKesehatan,
+            ]
+        ], 200);
+    }
+
+    public function getHistoryPenyakit($id_kandang)
+    {
+        // Ambil data laporan dengan jumlah sakit > 0
+        $laporanSakit = LaporanHarian::with(['penyakit'])
+            ->where('id_kandang', $id_kandang)
+            ->where('jumlah_sakit', '>', 0)
+            ->get();
+
+        // Jika tidak ada laporan
+        if ($laporanSakit->isEmpty()) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Tidak ada riwayat penyakit untuk kandang ini.'
+            ], 404);
+        }
+
+        // Menghitung total jumlah unggas sakit
+        $totalSakit = $laporanSakit->sum('jumlah_sakit');
+
+        return response()->json([
+            'status' => 200,
+            'data' => [
+                'total_sakit' => $totalSakit,
+                'history' => $laporanSakit->map(function ($laporan) {
+                    return [
+                        'tanggal_laporan' => $laporan->created_at->format('Y-m-d'),
+                        'jumlah_unggas' => $laporan->jumlah_sakit ?? 'Tidak ada unggas sakit',
+                        'gejala' => $laporan->penyakit->gejala ?? 'Tidak ada gejala',
+                        'nama_penyakit' => $laporan->penyakit->nama ?? 'Tidak ada nama penyakit',
+                        'deskripsi_penyakit' => $laporan->penyakit->deskripsi ?? 'Tidak ada deskripsi',
+                        'pengobatan' => $laporan->penyakit->pengobatan ?? 'Tidak ada pengobatan',
+                    ];
+                })
             ]
         ], 200);
     }

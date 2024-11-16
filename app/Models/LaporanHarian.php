@@ -12,7 +12,6 @@ class LaporanHarian extends Model
     protected $fillable =[
         'id_kandang',
         'id_user', 
-        'sesi', 
         'id_pakan',
         'jumlah_pakan', 
         'telur', 

@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('id_kandang')->constrained('kandangs')->onDelete('cascade');
             $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
-            $table->enum('sesi', ['pagi', 'sore']);
             $table->foreignId('id_pakan')->constrained('pakans')->onDelete('cascade');
             $table->decimal('jumlah_pakan', 8, 2); // /kg
             $table->integer('telur')->default(0);
