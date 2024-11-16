@@ -44,6 +44,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/kandang/{id}', [KandangController::class, 'delete'])->name('api.kandang.delete');
     Route::get('kandang/{id_kandang}/unggas-info', [KandangController::class, 'getUnggasInfo'])->name('api.kandang.info');
     Route::get('kandang/{id_kandang}/history-penyakit', [KandangController::class, 'getHistoryPenyakit'])->name('api.kandang.historypenyakit');
+    Route::get('/kandang/{id_kandang}/laporan-harian', [KandangController::class, 'getLaporanHarian'])->name('api.kandang.laporan');
 });
 
 Route::middleware('auth:sanctum')->group(function () {

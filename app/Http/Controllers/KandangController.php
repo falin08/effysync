@@ -203,4 +203,30 @@ class KandangController extends Controller
             ]
         ], 200);
     }
+
+    public function getLaporanHarian($id_kandang, Request $request)
+    {
+        // Ambil tanggal dari request atau gunakan tanggal hari ini
+        $tanggal = $request->tanggal ?? now()->toDateString();
+
+        // Query laporan harian berdasarkan ID kandang dan tanggal
+        $laporanHarian = LaporanHarian::with(['pakan', 'penyakit', 'user'])
+            ->where('id_kandang', $id_kandang)
+            ->whereDate('created_at', $tanggal) // Filter berdasarkan tanggal
+            ->get();
+
+        // Jika tidak ada laporan
+        if ($laporanHarian->isEmpty()) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Tidak ada laporan harian untuk tanggal ini.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        return response()->json([
+            'status' => Response::HTTP_OK,
+            'message' => 'Laporan harian berhasil diambil.',
+            'data' => $laporanHarian,
+        ], Response::HTTP_OK);
+    }
 }

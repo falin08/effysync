@@ -7,6 +7,7 @@ use App\Models\LaporanHarian;
 use App\Models\Pakan;
 use App\Models\Kandang;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -68,6 +69,13 @@ class DashboardController extends Controller
                 ];
             });
 
+        // 6. Pakan Digunakan Per Bulan Berdasarkan Jenis
+        $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
+        ->whereMonth('laporan_harians.created_at', now()->month)
+        ->select('pakans.jenis', DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan'))
+        ->groupBy('pakans.jenis')
+        ->get();
+
         // Response Data
         return response()->json([
             'status' => Response::HTTP_OK,
@@ -77,6 +85,7 @@ class DashboardController extends Controller
                 'diagram_kesehatan' => $dataKesehatan,
                 'diagram_pakan' => $dataPakan,
                 'recent_laporan' => $recentLaporan,
+                'pakan_per_bulan' => $pakanPerBulan,
             ],
         ], Response::HTTP_OK);
     }
