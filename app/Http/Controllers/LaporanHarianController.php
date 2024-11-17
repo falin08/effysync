@@ -102,7 +102,9 @@ class LaporanHarianController extends Controller
     public function index()
     {
         // Ambil semua laporan dengan informasi terkait, seperti nama kandang dan user
-        $laporans = LaporanHarian::with(['kandang', 'user', 'penyakit', 'pakan'])->get();
+        $laporans = LaporanHarian::with(['kandang', 'user', 'penyakit', 'pakan'])
+        ->orderBy('created_at', 'DESC') 
+        ->get();
 
         return response()->json([
             'status' => Response::HTTP_OK,

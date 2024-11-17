@@ -2,14 +2,9 @@
 
 namespace App\Http\Controllers;
 use App\Models\Kandang;
-use App\Models\User;
 use App\Models\LaporanHarian;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
-use PhpParser\Node\Expr\Cast\String_;
 
 class KandangController extends Controller
 {
@@ -66,22 +61,14 @@ class KandangController extends Controller
     // Mengupdate data kandang
     public function update(Request $request, $id)
     {
+        $kandang = Kandang::findOrFail($id);
+
         $request->validate([
-            'kode' => 'sometimes|string|max:255|unique:kandangs,kode,'.$id,
+            'kode' => 'sometimes|string|max:255|unique:kandangs,kode,' . $id,
             'jumlah_unggas' => 'sometimes|integer|min:1',
             'jenis_unggas' => 'sometimes|string',
             'status' => 'sometimes|in:aktif,tidak aktif',
         ]);
-
-        $kandang = Kandang::findOrFail($id);
-
-         // Pastikan 'kode' tidak kosong atau null
-        if ($request->has('kode') && empty($request->kode)) {
-            return response()->json([
-                'status' => Response::HTTP_BAD_REQUEST,
-                'message' => 'Kode tidak boleh kosong',
-            ], Response::HTTP_BAD_REQUEST);
-        }
 
         // Update data kandang
         if ($request->has('kode')) {
@@ -95,12 +82,16 @@ class KandangController extends Controller
         }
 
         // Update deactivated_at jika status menjadi tidak aktif
-        if ($request->status === 'tidak aktif') {
-            $kandang->deactivated_at = now();
-        } else {
-            $kandang->deactivated_at = null;
+        if (isset($request['status'])) {
+            if ($request['status'] === 'tidak aktif') {
+                $kandang->status = 'tidak aktif';
+                // Konversi waktu UTC ke Asia/Jakarta
+                $kandang->deactivated_at = now();
+            } else {
+                $kandang->status = 'aktif';
+                $kandang->deactivated_at = null;
+            }
         }
-        $kandang->status = $request->status ?? 'aktif'; // Mengupdate status sesuai request
 
         $kandang->save();
 
@@ -137,16 +128,11 @@ class KandangController extends Controller
         // Ambil populasi awal dari kolom `jumlah_unggas` pada data kandang
         $populasiAwal = $kandang->jumlah_unggas;
 
-        // Hitung total kematian dan sakit dari tabel laporan_harians
+        // Hitung populasi dari tabel laporan_harians
         $laporan = LaporanHarian::where('id_kandang', $id_kandang);
-
         $totalKematian = $laporan->sum('kematian');
         $totalSakit = $laporan->sum('jumlah_sakit');
-
-        // Hitung populasi sekarang: populasi awal - total kematian dan sakit
         $populasiSekarang = max(0, $populasiAwal - ($totalKematian + $totalSakit));
-
-        // Hitung deplesi unggas (jumlah sakit + mati)
         $deplesiUnggas = $totalKematian + $totalSakit;
 
         // Menghitung persentase kematian dan tingkat kesehatan
@@ -210,10 +196,10 @@ class KandangController extends Controller
         $tanggal = $request->tanggal ?? now()->toDateString();
 
         // Query laporan harian berdasarkan ID kandang dan tanggal
-        $laporanHarian = LaporanHarian::with(['pakan', 'penyakit', 'user'])
-            ->where('id_kandang', $id_kandang)
-            ->whereDate('created_at', $tanggal) // Filter berdasarkan tanggal
-            ->get();
+        $laporanHarian = LaporanHarian::with(['pakan:id,nama,jenis']) // Ambil hanya nama dan jenis dari tabel pakan
+        ->where('id_kandang', $id_kandang)
+        ->whereDate('created_at', $tanggal) // Filter berdasarkan tanggal
+        ->get(['created_at', 'telur as jumlah_telur', 'id_pakan', 'jumlah_pakan']);
 
         // Jika tidak ada laporan
         if ($laporanHarian->isEmpty()) {

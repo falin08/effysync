@@ -37,6 +37,6 @@ class LaporanHarian extends Model
 
     public function pakan()
     {
-        return $this->belongsTo(Penyakit::class, 'id_pakan');
+        return $this->belongsTo(Pakan::class, 'id_pakan');
     }
 }

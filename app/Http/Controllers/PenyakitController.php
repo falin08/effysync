@@ -58,7 +58,7 @@ class PenyakitController extends Controller
     {
         $request->validate([
             'nama' => 'sometimes|string|max:255',
-            'deskripsi' => 'sometime|string',
+            'deskripsi' => 'sometimes|string',
             'gejala' => 'sometimes|string',
             'pengobatan' => 'sometimes|string',
         ]);
