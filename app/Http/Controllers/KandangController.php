@@ -12,10 +12,12 @@ class KandangController extends Controller
     {
         if ($request->user()->role === 'admin') {
             // Admin bisa melihat semua kandang
-            $kandangs = Kandang::all();
+            $kandangs = Kandang::orderBy('created_at', 'DESC')->get();
         } else {
             // User biasa hanya bisa melihat kandang aktif
-            $kandangs = Kandang::whereNull('deactivated_at')->get();
+            $kandangs = Kandang::whereNull('deactivated_at')
+                ->orderBy('created_at', 'DESC')
+                ->get();
         }
 
         return response()->json([
@@ -99,18 +101,6 @@ class KandangController extends Controller
             'status' => Response::HTTP_OK,
             'message' => 'Kandang berhasil diperbarui.',
             'data' => $kandang,
-        ]);
-    }
-
-    // Menghapus kandang
-    public function delete($id)
-    {
-        $kandang = Kandang::findOrFail($id);
-        $kandang->delete(); // Ini akan memanggil soft delete
-
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'Kandang berhasil dihapus (soft delete).',
         ]);
     }
 
@@ -199,6 +189,7 @@ class KandangController extends Controller
         $laporanHarian = LaporanHarian::with(['pakan:id,nama,jenis']) // Ambil hanya nama dan jenis dari tabel pakan
         ->where('id_kandang', $id_kandang)
         ->whereDate('created_at', $tanggal) // Filter berdasarkan tanggal
+        ->orderBy('created_at', 'DESC')
         ->get(['created_at', 'telur as jumlah_telur', 'id_pakan', 'jumlah_pakan']);
 
         // Jika tidak ada laporan

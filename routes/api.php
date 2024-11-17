@@ -15,6 +15,7 @@ use App\Http\Middleware\RoleMiddleware;
 
 Route::post('/check-email', [AuthController::class, 'checkEmail'])->name('checkEmail');
 Route::post('/register', [AuthController::class, 'register'])->name('api.register');
+Route::post('/registerAdmin', [AuthController::class, 'registerAdmin'])->name('api.register.admin');
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest')->name('api.login');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.logout');
 

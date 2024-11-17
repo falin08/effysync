@@ -14,7 +14,7 @@ class PakanController extends Controller
      // Mengambil semua data pakan dari tabel "pakans"
     public function index()
     {
-        $pakans = Pakan::all();
+        $pakans = Pakan::orderBy('created_at', 'DESC')->get();
         return response()->json([
             'status' => Response::HTTP_OK,
             'message' => "success",

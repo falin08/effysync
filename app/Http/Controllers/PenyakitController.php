@@ -14,7 +14,7 @@ class PenyakitController extends Controller
      // Mengambil semua data penyakit dari tabel "penyakits"
     public function index()
     {
-        $penyakits = Penyakit::all();
+        $penyakits = Penyakit::orderBy('created_at', 'DESC')->get();
         return response()->json([
             'status' => Response::HTTP_OK,
             'message' => "success",

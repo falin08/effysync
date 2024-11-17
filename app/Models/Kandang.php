@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Kandang extends Model
 {
@@ -15,6 +16,10 @@ class Kandang extends Model
         'jenis_unggas',
         'status',
         'deactivated_at',
+    ];
+
+    protected $casts = [
+        'deactivated_at' => 'datetime',
     ];
 
     public function isActive()
