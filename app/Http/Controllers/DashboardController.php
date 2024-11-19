@@ -61,7 +61,7 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($laporan) {
                 return [
-                    'tanggal_laporan' => $laporan->created_at->format('Y-m-d'),
+                    'tanggal_laporan' => $laporan->created_at,
                     'jumlah_telur' => $laporan->telur ?? 0,
                     'jumlah_sakit' => $laporan->jumlah_sakit ?? 0,
                     'jumlah_kematian' => $laporan->kematian ?? 0,

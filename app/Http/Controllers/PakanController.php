@@ -4,10 +4,6 @@ namespace App\Http\Controllers;
 use App\Models\Pakan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
-use PhpParser\Node\Expr\Cast\String_;
 
 class PakanController extends Controller
 {
@@ -84,11 +80,12 @@ class PakanController extends Controller
     }
 
     public function getAllPakan()
-    {   
-        // Ambil semua data pakan, dikelompokkan berdasarkan jenis
-        $pakanData = Pakan::select('id', 'jenis', 'nama')
+    {
+        // Menggunakan SQL untuk pengelompokan case-insensitive
+        $pakanData = Pakan::selectRaw('LOWER(jenis) as jenis_lower, id, nama')
+            ->orderBy('jenis_lower', 'ASC') // Mengurutkan berdasarkan jenis_lower
             ->get()
-            ->groupBy('jenis')
+            ->groupBy('jenis_lower') // Mengelompokkan berdasarkan jenis_lower
             ->map(function ($items) {
                 return $items->map(function ($item) {
                     return [

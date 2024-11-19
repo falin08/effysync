@@ -67,7 +67,7 @@ class KandangController extends Controller
 
         $request->validate([
             'kode' => 'sometimes|string|max:255|unique:kandangs,kode,' . $id,
-            'jumlah_unggas' => 'sometimes|integer|min:1',
+            'jumlah_unggas' => 'sometimes|integer|min:0',
             'jenis_unggas' => 'sometimes|string',
             'status' => 'sometimes|in:aktif,tidak aktif',
         ]);
@@ -82,9 +82,9 @@ class KandangController extends Controller
         if ($request->has('jenis_unggas')) {
             $kandang->jenis_unggas = $request->jenis_unggas;
         }
-
+        
         // Update deactivated_at jika status menjadi tidak aktif
-        if (isset($request['status'])) {
+        if ($request->has('status')) {
             if ($request['status'] === 'tidak aktif') {
                 $kandang->status = 'tidak aktif';
                 // Konversi waktu UTC ke Asia/Jakarta
@@ -106,31 +106,28 @@ class KandangController extends Controller
 
     public function getUnggasInfo($id_kandang)
     {
-        // Ambil data kandang berdasarkan ID
-        $kandang = Kandang::find($id_kandang);
-        if (!$kandang) {
-            return response()->json([
-                'status' => 404,
-                'message' => 'Kandang tidak ditemukan'
-            ], 404);
-        }
+        $kandang = Kandang::findOrFail($id_kandang);
 
-        // Ambil populasi awal dari kolom `jumlah_unggas` pada data kandang
+        // Hitung total kematian dan sakit
+        $laporan = LaporanHarian::where('id_kandang', $id_kandang)
+        ->selectRaw('
+            SUM(kematian) as total_kematian, 
+            SUM(jumlah_sakit) as total_sakit
+        ')
+        ->first();
+
         $populasiAwal = $kandang->jumlah_unggas;
-
-        // Hitung populasi dari tabel laporan_harians
-        $laporan = LaporanHarian::where('id_kandang', $id_kandang);
-        $totalKematian = $laporan->sum('kematian');
-        $totalSakit = $laporan->sum('jumlah_sakit');
-        $populasiSekarang = max(0, $populasiAwal - ($totalKematian + $totalSakit));
+        $totalKematian = $laporan->total_kematian ?? 0;
+        $totalSakit = $laporan->total_sakit ?? 0;
         $deplesiUnggas = $totalKematian + $totalSakit;
+        $populasiSekarang = max(0, $populasiAwal - $deplesiUnggas);
 
         // Menghitung persentase kematian dan tingkat kesehatan
         $persentaseKematian = ($populasiAwal > 0) ? ($totalKematian / $populasiAwal) * 100 : 0;
         $tingkatKesehatan = ($populasiAwal > 0) ? ($populasiSekarang / $populasiAwal) * 100 : 0;
-        
+
         return response()->json([
-            'status' => 200,
+            'status' => Response::HTTP_OK,
             'data' => [
                 'populasi_awal' => $populasiAwal,
                 'populasi_sekarang' => $populasiSekarang,
@@ -140,13 +137,13 @@ class KandangController extends Controller
                 'persentase_kematian' => $persentaseKematian,
                 'tingkat_kesehatan' => $tingkatKesehatan,
             ]
-        ], 200);
+        ]);
     }
 
     public function getHistoryPenyakit($id_kandang)
     {
         // Ambil data laporan dengan jumlah sakit > 0
-        $laporanSakit = LaporanHarian::with(['penyakit'])
+        $laporanSakit = LaporanHarian::with('penyakit')
             ->where('id_kandang', $id_kandang)
             ->where('jumlah_sakit', '>', 0)
             ->get();
@@ -154,56 +151,53 @@ class KandangController extends Controller
         // Jika tidak ada laporan
         if ($laporanSakit->isEmpty()) {
             return response()->json([
-                'status' => 404,
-                'message' => 'Tidak ada riwayat penyakit untuk kandang ini.'
-            ], 404);
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Tidak ada riwayat penyakit untuk kandang ini.',
+            ]);
         }
 
-        // Menghitung total jumlah unggas sakit
-        $totalSakit = $laporanSakit->sum('jumlah_sakit');
+        $history = $laporanSakit->map(function ($laporan) {
+            return [
+                'tanggal_laporan' => $laporan->created_at,
+                'jumlah_unggas' => $laporan->jumlah_sakit,
+                'gejala' => $laporan->penyakit->gejala ?? 'Tidak ada gejala',
+                'nama_penyakit' => $laporan->penyakit->nama ?? 'Tidak ada nama penyakit',
+                'deskripsi_penyakit' => $laporan->penyakit->deskripsi ?? 'Tidak ada deskripsi',
+                'pengobatan' => $laporan->penyakit->pengobatan ?? 'Tidak ada pengobatan',
+            ];
+        });
 
         return response()->json([
-            'status' => 200,
+            'status' => Response::HTTP_OK,
             'data' => [
-                'total_sakit' => $totalSakit,
-                'history' => $laporanSakit->map(function ($laporan) {
-                    return [
-                        'tanggal_laporan' => $laporan->created_at->format('Y-m-d'),
-                        'jumlah_unggas' => $laporan->jumlah_sakit ?? 'Tidak ada unggas sakit',
-                        'gejala' => $laporan->penyakit->gejala ?? 'Tidak ada gejala',
-                        'nama_penyakit' => $laporan->penyakit->nama ?? 'Tidak ada nama penyakit',
-                        'deskripsi_penyakit' => $laporan->penyakit->deskripsi ?? 'Tidak ada deskripsi',
-                        'pengobatan' => $laporan->penyakit->pengobatan ?? 'Tidak ada pengobatan',
-                    ];
-                })
+                'total_sakit' => $laporanSakit->sum('jumlah_sakit'),
+                'history' => $history,
             ]
-        ], 200);
+        ]);
     }
 
     public function getLaporanHarian($id_kandang, Request $request)
     {
         // Ambil tanggal dari request atau gunakan tanggal hari ini
-        $tanggal = $request->tanggal ?? now()->toDateString();
+        $tanggal = $request->input('tanggal', now()->toDateString());
 
-        // Query laporan harian berdasarkan ID kandang dan tanggal
-        $laporanHarian = LaporanHarian::with(['pakan:id,nama,jenis']) // Ambil hanya nama dan jenis dari tabel pakan
-        ->where('id_kandang', $id_kandang)
-        ->whereDate('created_at', $tanggal) // Filter berdasarkan tanggal
-        ->orderBy('created_at', 'DESC')
-        ->get(['created_at', 'telur as jumlah_telur', 'id_pakan', 'jumlah_pakan']);
+        $laporanHarian = LaporanHarian::with('pakan:id,nama,jenis')
+            ->where('id_kandang', $id_kandang)
+            ->whereDate('created_at', $tanggal)
+            ->orderBy('created_at', 'DESC')
+            ->get(['created_at', 'telur as jumlah_telur', 'id_pakan', 'jumlah_pakan']);
 
-        // Jika tidak ada laporan
         if ($laporanHarian->isEmpty()) {
             return response()->json([
                 'status' => Response::HTTP_NOT_FOUND,
                 'message' => 'Tidak ada laporan harian untuk tanggal ini.',
-            ], Response::HTTP_NOT_FOUND);
+            ]);
         }
 
         return response()->json([
             'status' => Response::HTTP_OK,
             'message' => 'Laporan harian berhasil diambil.',
             'data' => $laporanHarian,
-        ], Response::HTTP_OK);
+        ]);
     }
 }

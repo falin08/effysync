@@ -160,4 +160,40 @@ class AuthController extends Controller
             'data' => $admin,
         ], Response::HTTP_CREATED);
     }
+
+    public function showProfile()
+    {
+        // Mendapatkan data user yang sedang login
+        $user = Auth::user();
+
+        return response()->json([
+            'status' => Response::HTTP_OK,
+            'message' => 'Profile data fetched successfully',
+            'data' => $user, // Kirim data pengguna ke client
+        ], Response::HTTP_OK);
+    }
+
+    public function editProfile(Request $request)
+    {
+        $userId = Auth::id();  // Mengambil ID pengguna yang login
+
+        // Validasi input
+        $validated = $request->validate([
+            'username' => 'sometimes|string|max:255|unique:users,username,' . $userId,
+            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $userId,
+        ]);
+
+        // Mendapatkan user yang sedang login
+        $user = User::findOrFail($userId);
+
+        // Update data user
+        $user->update($validated); // Menggunakan data yang sudah tervalidasi
+
+        // Respon sukses
+        return response()->json([
+            'status' => Response::HTTP_OK,
+            'message' => 'Profile updated successfully',
+            'data' => $user, // Mengembalikan user yang sudah diperbarui
+        ]);
+    }
 }

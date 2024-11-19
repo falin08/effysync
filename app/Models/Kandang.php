@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 class Kandang extends Model
 {
@@ -30,5 +30,20 @@ class Kandang extends Model
     public function laporanHarians()
     {
         return $this->hasMany(LaporanHarian::class, 'id_kandang');
+    }
+
+    public function getCreatedAtAttribute($value)
+    {
+        return Carbon::parse($value)->format('d-m-Y');  // Format sesuai kebutuhan Anda
+    }
+
+    public function getUpdatedAtAttribute($value)
+    {
+        return Carbon::parse($value)->format('d-m-Y');
+    }
+
+    public function getDeactivatedAtAttribute($value)
+    {
+        return $value ? Carbon::parse($value)->format('d-m-Y') : null;
     }
 }

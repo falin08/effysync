@@ -19,20 +19,9 @@ class LaporanHarianController extends Controller
             'jumlah_pakan' => 'required|numeric|min:0',
             'telur' => 'nullable|integer|min:0',
             'kematian' => 'nullable|integer|min:0',
-            'jumlah_sakit' => 'nullable|integer|min:0',
-            'id_penyakit' => 'nullable|exists:penyakits,id',
-        ],
-        [
-            'id_penyakit.required_if' => 'Gejala penyakit harus dipilih jika ada unggas sakit.',
+            'jumlah_sakit' => 'nullable|integer|min:1|required_with:id_penyakit',
+            'id_penyakit' => 'nullable|exists:penyakits,id|required_with:jumlah_sakit',
         ]);
-        
-        // Validasi tambahan jika jumlah sakit diisi, id_penyakit harus diisi
-        if ($request->jumlah_sakit > 0 && !$request->id_penyakit) {
-            return response()->json([
-                'status' => Response::HTTP_BAD_REQUEST,
-                'message' => 'Jika jumlah sakit diisi, gejala penyakit harus dipilih.',
-            ], Response::HTTP_BAD_REQUEST);
-        }
 
         // Ambil informasi dan ketersediaan pakan
         $pakan = Pakan::findOrFail($request->id_pakan);
@@ -46,7 +35,7 @@ class LaporanHarianController extends Controller
             return response()->json([
                 'status' => Response::HTTP_BAD_REQUEST,
                 'message' => 'Stok pakan tidak mencukupi.',
-            ], Response::HTTP_BAD_REQUEST);
+            ]);
         }
 
         // Ambil informasi penyakit dan pengobatan

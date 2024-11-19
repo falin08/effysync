@@ -18,6 +18,8 @@ Route::post('/register', [AuthController::class, 'register'])->name('api.registe
 Route::post('/registerAdmin', [AuthController::class, 'registerAdmin'])->name('api.register.admin');
 Route::post('/login', [AuthController::class, 'login'])->middleware('guest')->name('api.login');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.logout');
+Route::post('/edit-profile', [AuthController::class, 'editProfile'])->middleware('auth:sanctum')->name('api.edit.profile');
+Route::get('/profile', [AuthController::class, 'showProfile'])->middleware('auth:sanctum')->name('api.profile');
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/penyakit', [PenyakitController::class, 'index'])->name('api.penyakit.index');
@@ -42,14 +44,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/kandang/{id}', [KandangController::class, 'show'])->name('api.kandang.show');
     Route::put('/kandang/{id}', [KandangController::class, 'update'])->name('api.kandang.edit');
     Route::post('/kandang', [KandangController::class, 'create'])->name('api.kandang.create');
-    Route::delete('/kandang/{id}', [KandangController::class, 'delete'])->name('api.kandang.delete');
     Route::get('kandang/{id_kandang}/unggas-info', [KandangController::class, 'getUnggasInfo'])->name('api.kandang.info');
     Route::get('kandang/{id_kandang}/history-penyakit', [KandangController::class, 'getHistoryPenyakit'])->name('api.kandang.historypenyakit');
     Route::get('/kandang/{id_kandang}/laporan-harian', [KandangController::class, 'getLaporanHarian'])->name('api.kandang.laporan');
 });
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/laporan-harian/{id_kandang}', [LaporanHarianController::class, 'store']);
+    Route::post('/laporan-harian/{id_kandang}', [LaporanHarianController::class, 'store'])->name('api.add.laporan');
     Route::get('/laporan-harian', [LaporanHarianController::class, 'index'])->name('api.laporan.index');
 });
 
