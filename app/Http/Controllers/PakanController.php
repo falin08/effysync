@@ -81,19 +81,24 @@ class PakanController extends Controller
 
     public function getAllPakan()
     {
-        // Menggunakan SQL untuk pengelompokan case-insensitive
+        // Mengambil data pakan dan mengelompokkan berdasarkan jenis secara case-insensitive
         $pakanData = Pakan::selectRaw('LOWER(jenis) as jenis_lower, id, nama')
-            ->orderBy('jenis_lower', 'ASC') // Mengurutkan berdasarkan jenis_lower
+            ->orderBy('jenis_lower', 'ASC') // Mengurutkan berdasarkan jenis
+            ->orderBy('nama', 'ASC') // Mengurutkan nama dalam setiap jenis
             ->get()
             ->groupBy('jenis_lower') // Mengelompokkan berdasarkan jenis_lower
-            ->map(function ($items) {
-                return $items->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'nama' => $item->nama
-                    ];
-                });
-            });
+            ->map(function ($items, $jenis) {
+                return [
+                    'jenis' => ucfirst($jenis), // Menampilkan jenis dengan huruf pertama kapital
+                    'pakan' => $items->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'nama' => $item->nama
+                        ];
+                    })
+                ];
+            })
+            ->values(); // Menghapus kunci pengelompokan agar JSON lebih rapi
 
         return response()->json([
             'status' => Response::HTTP_OK,
