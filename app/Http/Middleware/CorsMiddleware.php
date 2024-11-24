@@ -21,6 +21,11 @@ class CorsMiddleware
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+        // Tangani preflight request OPTIONS
+        if ($request->getMethod() === 'OPTIONS') {
+            return response()->json([], 200);
+        }
+
         return $response;
     }
 }
