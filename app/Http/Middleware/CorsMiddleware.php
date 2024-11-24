@@ -15,11 +15,9 @@ class CorsMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Lanjutkan ke middleware berikutnya dan dapatkan respon
         $response = $next($request);
 
-        // Tambahkan header CORS ke respon
-        $response->headers->set('Access-Control-Allow-Origin', '*');
+        $response->headers->set('Access-Control-Allow-Origin', '*'); // Allow all origins
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
