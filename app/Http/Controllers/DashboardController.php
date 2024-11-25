@@ -73,25 +73,27 @@ class DashboardController extends Controller
             });
 
         // 6. Pakan Digunakan Per Bulan Berdasarkan Jenis
+        $bulanSekarang = Carbon::now()->month; // Mendapatkan bulan sekarang
+        $tahunSekarang = Carbon::now()->year;  // Mendapatkan tahun sekarang
+
         $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
             ->select(
-                DB::raw('pakans.jenis as jenis'), 
-                DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan'),
-                DB::raw('MONTH(laporan_harians.created_at) as bulan'),
-                DB::raw('YEAR(laporan_harians.created_at) as tahun')
+                DB::raw('pakans.jenis as jenis'),
+                DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan')
             )
-            ->groupBy('pakans.jenis', 'bulan', 'tahun')  // Grouping berdasarkan jenis pakan, bulan, dan tahun
-            ->orderBy('tahun', 'desc')  // Urutkan berdasarkan tahun
-            ->orderBy('bulan', 'asc')   // Urutkan berdasarkan bulan
+            ->whereMonth('laporan_harians.created_at', '=', $bulanSekarang) // Filter berdasarkan bulan sekarang
+            ->whereYear('laporan_harians.created_at', '=', $tahunSekarang)  // Filter berdasarkan tahun sekarang
+            ->groupBy('pakans.jenis')  // Grouping hanya berdasarkan jenis pakan
             ->get()
             ->map(function ($item) {
                 return [
                     'jenis' => ucfirst($item->jenis), // Mengubah huruf pertama jadi kapital
                     'total_pakan' => $item->total_pakan ?? 0, // Jika tidak ada data, anggap 0
-                    'bulan' => Carbon::createFromFormat('m', $item->bulan)->translatedFormat('F'), // Menampilkan nama bulan
-                    'tahun' => $item->tahun,
+                    'bulan' => Carbon::now()->translatedFormat('F'), // Nama bulan saat ini
+                    'tahun' => Carbon::now()->year, // Tahun sekarang
                 ];
             });
+
         // $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
         // ->whereMonth('laporan_harians.created_at', now()->month)
         // ->select(
