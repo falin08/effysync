@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Kandang;
 use App\Models\LaporanHarian;
 use App\Models\Penyakit;
 use App\Models\Pakan;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LaporanHarianController extends Controller
 {
@@ -50,21 +50,33 @@ class LaporanHarianController extends Controller
             $deskripsi_penyakit = $penyakit ? $penyakit->deskripsi: null;
         }
 
-        // Kurangi stok pakan
-        $pakan->stok -= $request->jumlah_pakan;
-        $pakan->save();
+        DB::beginTransaction();
 
-        // Simpan laporan harian
-        $laporan = LaporanHarian::create([
-            'id_kandang' => $id_kandang,
-            'id_user' => $request->user()->id,
-            'id_pakan' => $request->id_pakan,
-            'jumlah_pakan' => $request->jumlah_pakan,
-            'telur' => $request->telur ?? 0,
-            'kematian' => $request->kematian ?? 0,
-            'jumlah_sakit' => $request->jumlah_sakit ?? 0,
-            'id_penyakit' => $request->id_penyakit,
-        ]);
+        try {
+            // Kurangi stok pakan
+            $pakan->stok -= $request->jumlah_pakan;
+            $pakan->save();
+
+            // Simpan laporan harian
+            $laporan = LaporanHarian::create([
+                'id_kandang' => $id_kandang,
+                'id_user' => $request->user()->id,
+                'id_pakan' => $request->id_pakan,
+                'jumlah_pakan' => $request->jumlah_pakan,
+                'telur' => $request->telur ?? 0,
+                'kematian' => $request->kematian ?? 0,
+                'jumlah_sakit' => $request->jumlah_sakit ?? 0,
+                'id_penyakit' => $request->id_penyakit,
+            ]);
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Terjadi kesalahan saat menyimpan laporan harian.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
 
         // Tentukan apakah alert perlu ditampilkan
         $showAlert = $request->jumlah_sakit > 0 || $request->id_penyakit !== null;
@@ -90,15 +102,23 @@ class LaporanHarianController extends Controller
     // Menampilkan semua laporan harian untuk admin
     public function index()
     {
-        // Ambil semua laporan dengan informasi terkait, seperti nama kandang dan user
-        $laporans = LaporanHarian::with(['kandang', 'user', 'penyakit', 'pakan'])
-        ->orderBy('created_at', 'DESC') 
-        ->get();
+        try{
+            // Ambil semua laporan dengan informasi terkait, seperti nama kandang dan user
+            $laporans = LaporanHarian::with(['kandang', 'user', 'penyakit', 'pakan'])
+            ->orderBy('created_at', 'DESC') 
+            ->get();
 
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'Laporan harian berhasil diambil.',
-            'data' => $laporans,
-        ]);
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'Laporan harian berhasil diambil.',
+                'data' => $laporans,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Terjadi kesalahan saat mengambil laporan harian.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

@@ -10,12 +10,20 @@ class PakanController extends Controller
      // Mengambil semua data pakan dari tabel "pakans"
     public function index()
     {
-        $pakans = Pakan::orderBy('created_at', 'DESC')->get();
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => "success",
-            'data' => $pakans,
-        ]);
+        try{
+            $pakans = Pakan::orderBy('created_at', 'DESC')->get();
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => "success",
+                'data' => $pakans,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Gagal mengambil data pakan.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
     
     // Menambahkan pakan baru
@@ -27,25 +35,46 @@ class PakanController extends Controller
             'stok' => 'required|numeric|min:0',
         ]);
 
-        $pakan = Pakan::create($request->all());
+        try{
+            $pakan = Pakan::create($request->all());
 
-        return response()->json([
-            'status' => Response::HTTP_CREATED,
-            'message' => 'Pakan berhasil ditambahkan.',
-            'data' => $pakan,
-        ], Response::HTTP_CREATED);
+            return response()->json([
+                'status' => Response::HTTP_CREATED,
+                'message' => 'Pakan berhasil ditambahkan.',
+                'data' => $pakan,
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Gagal menambahkan pakan.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
      // Menampilkan detail pakan berdasarkan ID
      public function show($id)
      {
-         $pakan = Pakan::findOrFail($id);
- 
-         return response()->json([
-             'status' => Response::HTTP_OK,
-             'message' => 'Success',
-             'data' => $pakan,
-         ]);
+        try{
+            $pakan = Pakan::findOrFail($id);
+    
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'Success',
+                'data' => $pakan,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Data pakan tidak ditemukan.',
+            ], Response::HTTP_NOT_FOUND);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Terjadi kesalahan saat mengambil data pakan.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
      }
 
     // Mengupdate data pakan
@@ -57,52 +86,86 @@ class PakanController extends Controller
             'stok' => 'sometimes|numeric|min:0',
         ]);
 
-        $pakan = Pakan::findOrFail($id);
-        $pakan->update($request->all());
+        try{
+            $pakan = Pakan::findOrFail($id);
+            $pakan->update($request->all());
 
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'Pakan berhasil diperbarui.',
-            'data' => $pakan,
-        ]);
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'Pakan berhasil diperbarui.',
+                'data' => $pakan,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Data pakan tidak ditemukan.',
+            ], Response::HTTP_NOT_FOUND);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Gagal memperbarui pakan.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }    
     }
 
     // Menghapus pakan
     public function delete($id)
     {
-        $pakan = Pakan::findOrFail($id);
-        $pakan->delete();
+        try{
+            $pakan = Pakan::findOrFail($id);
+            $pakan->delete();
 
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'Pakan berhasil dihapus.',
-        ]);
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'Pakan berhasil dihapus.',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Data pakan tidak ditemukan.',
+            ], Response::HTTP_NOT_FOUND);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Gagal menghapus pakan.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     public function getAllPakan()
     {
-        // Mengambil data pakan dan mengelompokkan berdasarkan jenis secara case-insensitive
-        $pakanData = Pakan::selectRaw('LOWER(jenis) as jenis_lower, id, nama')
-            ->orderBy('jenis_lower', 'ASC') // Mengurutkan berdasarkan jenis
-            ->orderBy('nama', 'ASC') // Mengurutkan nama dalam setiap jenis
-            ->get()
-            ->groupBy('jenis_lower') // Mengelompokkan berdasarkan jenis_lower
-            ->map(function ($items, $jenis) {
-                return [
-                    'jenis' => ucfirst($jenis), // Menampilkan jenis dengan huruf pertama kapital
-                    'pakan' => $items->map(function ($item) {
-                        return [
-                            'id' => $item->id,
-                            'nama' => $item->nama
-                        ];
-                    })
-                ];
-            })
-            ->values(); // Menghapus kunci pengelompokan agar JSON lebih rapi
+        try{
+            // Mengambil data pakan dan mengelompokkan berdasarkan jenis secara case-insensitive
+            $pakanData = Pakan::selectRaw('LOWER(jenis) as jenis_lower, id, nama')
+                ->orderBy('jenis_lower', 'ASC') // Mengurutkan berdasarkan jenis
+                ->orderBy('nama', 'ASC') // Mengurutkan nama dalam setiap jenis
+                ->get()
+                ->groupBy('jenis_lower') // Mengelompokkan berdasarkan jenis_lower
+                ->map(function ($items, $jenis) {
+                    return [
+                        'jenis' => ucfirst($jenis), // Menampilkan jenis dengan huruf pertama kapital
+                        'pakan' => $items->map(function ($item) {
+                            return [
+                                'id' => $item->id,
+                                'nama' => $item->nama
+                            ];
+                        })
+                    ];
+                })
+                ->values(); // Menghapus kunci pengelompokan agar JSON lebih rapi
 
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'data' => $pakanData
-        ]);
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'data' => $pakanData
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Gagal mengambil data pakan.',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

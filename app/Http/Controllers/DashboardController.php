@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\LaporanHarian;
 use App\Models\Pakan;
 use App\Models\Kandang;
@@ -44,15 +43,15 @@ class DashboardController extends Controller
         ];
 
         // 4. Diagram Pie: Stok Pakan Seluruh Jenis
-        $dataPakan = Pakan::selectRaw('jenis, SUM(stok) as total_stok')
-            ->groupBy('jenis')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'jenis' => $item->jenis,
-                    'total_stok' => $item->total_stok ?? 0,
-                ];
-            });
+        $dataPakan = Pakan::selectRaw('LOWER(jenis) as jenis_lowercase, SUM(stok) as total_stok')
+        ->groupBy('jenis_lowercase')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'jenis' => ucfirst($item->jenis_lowercase), // Mengembalikan jenis dengan huruf besar di awal
+                'total_stok' => $item->total_stok ?? 0,
+            ];
+        });
 
         // 5. Recent Laporan Harian
         $recentLaporan = LaporanHarian::with(['kandang', 'user', 'pakan'])
@@ -75,9 +74,18 @@ class DashboardController extends Controller
         // 6. Pakan Digunakan Per Bulan Berdasarkan Jenis
         $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
         ->whereMonth('laporan_harians.created_at', now()->month)
-        ->select('pakans.jenis', DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan'))
-        ->groupBy('pakans.jenis')
-        ->get();
+        ->select(
+            DB::raw('LOWER(pakans.jenis) as jenis_lowercase'), 
+            DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan')
+        )
+        ->groupBy('jenis_lowercase')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
+                'total_pakan' => $item->total_pakan ?? 0,
+            ];
+        });
 
         // Response Data
         return response()->json([

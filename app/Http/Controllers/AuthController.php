@@ -8,49 +8,35 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        try{
-            $request->validate([
-                'identifier' => 'required',
-                'password' => 'required',
-            ]);
+        $request->validate([
+            'identifier' => 'required',
+            'password' => 'required',
+        ]);
 
-            $user = User::where('email', $request->identifier)
-            ->orWhere('username', $request->identifier)
-            ->first();
+        $user = User::where('email', $request->identifier)
+        ->orWhere('username', $request->identifier)
+        ->first();
 
-            if (!$user || !Hash::check($request->password, $user->password)) {
-                return response()->json(['status' => Response::HTTP_UNAUTHORIZED, 'message' => 'Invalid credentials']);
-            }
-
-            $token = $user->createToken('user_login')->plainTextToken;
-
-            return response()->json([
-                'status' => Response::HTTP_OK,
-                'message' => 'success',
-                'data' => [
-                    'token' => $token,
-                    'user' => $user,
-                ]
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'status' => Response::HTTP_BAD_REQUEST,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], Response::HTTP_BAD_REQUEST);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Login failed: ' . $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['status' => Response::HTTP_UNAUTHORIZED, 'message' => 'Invalid credentials']);
         }
+
+        $token = $user->createToken('user_login')->plainTextToken;
+
+        return response()->json([
+            'status' => Response::HTTP_OK,
+            'message' => 'success',
+            'data' => [
+                'token' => $token,
+                'user' => $user,
+            ]
+        ]);
     }
 
     public function logout(Request $request)

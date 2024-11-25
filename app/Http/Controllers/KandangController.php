@@ -5,6 +5,7 @@ use App\Models\Kandang;
 use App\Models\LaporanHarian;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
 
 class KandangController extends Controller
 {
@@ -29,11 +30,18 @@ class KandangController extends Controller
     // Menambahkan kandang baru
     public function create(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'kode' => 'required|string|max:255|unique:kandangs,kode',
             'jumlah_unggas' => 'required|integer|min:1',
             'jenis_unggas' => 'required|string',
         ]);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => Response::HTTP_BAD_REQUEST,
+                'errors' => $validator->errors(),
+            ], Response::HTTP_BAD_REQUEST);
+        }
 
         // Set deactivated_at menjadi null saat membuat kandang baru
         $kandang = Kandang::create(array_merge($request->all(), [
@@ -51,13 +59,20 @@ class KandangController extends Controller
      // Menampilkan detail kandang berdasarkan ID
      public function show($id)
      {
-         $kandang = Kandang::findOrFail($id);
-         
-         return response()->json([
-             'status' => Response::HTTP_OK,
-             'message' => 'Success',
-             'data' => $kandang,
-         ]);
+        try{
+            $kandang = Kandang::findOrFail($id);
+            
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'Success',
+                'data' => $kandang,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'status' => Response::HTTP_NOT_FOUND,
+                'message' => 'Kandang tidak ditemukan.',
+            ], Response::HTTP_NOT_FOUND);
+        }
      }
 
     // Mengupdate data kandang
@@ -108,22 +123,20 @@ class KandangController extends Controller
     {
         $kandang = Kandang::findOrFail($id_kandang);
 
-        // Hitung total kematian dan sakit
-        $laporan = LaporanHarian::where('id_kandang', $id_kandang)
-        ->selectRaw('
-            SUM(kematian) as total_kematian, 
-            SUM(jumlah_sakit) as total_sakit
-        ')
-        ->first();
-
         $populasiAwal = $kandang->jumlah_unggas;
-        $totalKematian = $laporan->total_kematian ?? 0;
-        $totalSakit = $laporan->total_sakit ?? 0;
-        $deplesiUnggas = $totalKematian + $totalSakit;
+
+        //Mengambil data dari fungsi getDeplesi
+        $deplesiResponse = $this->getDeplesi($id_kandang);
+
+        // Mengambil data JSON dari response
+        $deplesiData = json_decode($deplesiResponse->getContent(), true);
+
+        
+        $deplesiUnggas = $deplesiData['data']['deplesi'];
         $populasiSekarang = max(0, $populasiAwal - $deplesiUnggas);
 
         // Menghitung persentase kematian dan tingkat kesehatan
-        $persentaseKematian = ($populasiAwal > 0) ? ($totalKematian / $populasiAwal) * 100 : 0;
+        $persentaseKematian = ($populasiAwal > 0) ? ($deplesiData['data']['jumlah_mati'] / $populasiAwal) * 100 : 0;
         $tingkatKesehatan = ($populasiAwal > 0) ? ($populasiSekarang / $populasiAwal) * 100 : 0;
 
         return response()->json([
@@ -131,13 +144,33 @@ class KandangController extends Controller
             'data' => [
                 'populasi_awal' => $populasiAwal,
                 'populasi_sekarang' => $populasiSekarang,
-                'jumlah_sakit' => $totalSakit,
-                'jumlah_mati' => $totalKematian,
-                'deplesi_unggas' => $deplesiUnggas, 
                 'persentase_kematian' => $persentaseKematian,
                 'tingkat_kesehatan' => $tingkatKesehatan,
             ]
         ]);
+    }
+
+    public function getDeplesi($id_kandang)
+    {
+        $laporan = LaporanHarian::where('id_kandang', $id_kandang)
+            ->selectRaw('
+                SUM(kematian) as total_kematian, 
+                SUM(jumlah_sakit) as total_sakit
+            ')
+            ->first();
+
+        $totalKematian = $laporan->total_kematian ?? 0;
+        $totalSakit = $laporan->total_sakit ?? 0;
+        $deplesiUnggas = $totalKematian + $totalSakit;
+
+        return response()->json([
+            'status' => Response::HTTP_OK,
+            'data' => [
+            'jumlah_mati' => $totalKematian,
+            'jumlah_sakit' => $totalSakit,
+            'deplesi' => $deplesiUnggas,
+        ]
+    ]);
     }
 
     public function getHistoryPenyakit($id_kandang)
