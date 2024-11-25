@@ -73,41 +73,24 @@ class DashboardController extends Controller
             });
 
         // 6. Pakan Digunakan Per Bulan Berdasarkan Jenis
-        $bulanSekarang = Carbon::now()->month; // Mendapatkan bulan sekarang
-        $tahunSekarang = Carbon::now()->year;  // Mendapatkan tahun sekarang
-
         $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
+            ->whereMonth('laporan_harians.created_at', now()->month)
             ->select(
-                DB::raw('pakans.jenis as jenis'),
+                DB::raw('LOWER(pakans.jenis) as jenis_lowercase'), 
                 DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan')
             )
-            ->whereMonth('laporan_harians.created_at', '=', $bulanSekarang) // Filter berdasarkan bulan sekarang
-            ->whereYear('laporan_harians.created_at', '=', $tahunSekarang)  // Filter berdasarkan tahun sekarang
-            ->groupBy('pakans.jenis')  // Grouping hanya berdasarkan jenis pakan
+            ->groupBy('jenis_lowercase')
             ->get()
             ->map(function ($item) {
                 return [
-                    'jenis' => ucfirst($item->jenis), // Mengubah huruf pertama jadi kapital
-                    'total_pakan' => $item->total_pakan ?? 0, // Jika tidak ada data, anggap 0
-                    'bulan' => Carbon::now()->translatedFormat('F'), // Nama bulan saat ini
-                    'tahun' => Carbon::now()->year, // Tahun sekarang
+                    'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
+                    'total_pakan' => $item->total_pakan ?? 0,
                 ];
             });
-
-        // $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
-        // ->whereMonth('laporan_harians.created_at', now()->month)
-        // ->select(
-        //     DB::raw('LOWER(pakans.jenis) as jenis_lowercase'), 
-        //     DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan')
-        // )
-        // ->groupBy('jenis_lowercase')
-        // ->get()
-        // ->map(function ($item) {
-        //     return [
-        //         'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
-        //         'total_pakan' => $item->total_pakan ?? 0,
-        //     ];
-        // });
+        return response()->json([
+            'bulan' => now()->translatedFormat('F'),  // Nama bulan sekarang
+            'data' => $pakanPerBulan,
+        ]);
 
         // Response Data
         return response()->json([
