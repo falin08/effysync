@@ -15,29 +15,42 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        $request->validate([
-            'identifier' => 'required',
-            'password' => 'required',
-        ]);
+        try{
+            $request->validate([
+                'identifier' => 'required',
+                'password' => 'required',
+            ]);
 
-        $user = User::where('email', $request->identifier)
-        ->orWhere('username', $request->identifier)
-        ->first();
+            $user = User::where('email', $request->identifier)
+            ->orWhere('username', $request->identifier)
+            ->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['status' => Response::HTTP_UNAUTHORIZED, 'message' => 'Invalid credentials']);
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json(['status' => Response::HTTP_UNAUTHORIZED, 'message' => 'Invalid credentials']);
+            }
+
+            $token = $user->createToken('user_login')->plainTextToken;
+
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'success',
+                'data' => [
+                    'token' => $token,
+                    'user' => $user,
+                ]
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => Response::HTTP_BAD_REQUEST,
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Login failed: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $token = $user->createToken('user_login')->plainTextToken;
-
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'success',
-            'data' => [
-                'token' => $token,
-                'user' => $user,
-            ]
-        ]);
     }
 
     public function logout(Request $request)
@@ -91,74 +104,98 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:3',
-            'username' => 'required|string|max:255|unique:users',
-        ]);
+        try{
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:3',
+                'username' => 'required|string|max:255|unique:users',
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => Response::HTTP_BAD_REQUEST,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'user',
+                'username' => $request->username,
+                'email_verified_at' => now(),
+                'remember_token' => Str::random(10),
+            ]);
+
+
             return response()->json([
-                'status' => Response::HTTP_BAD_REQUEST,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], Response::HTTP_BAD_REQUEST);
+                'status' => Response::HTTP_CREATED,
+                'message' => 'User Registered Success',
+                'data' => [
+                    'user' => $user,
+                ]
+            ], Response::HTTP_CREATED);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Database error: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'An error occurred during registration: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'user',
-            'username' => $request->username,
-            'email_verified_at' => now(),
-            'remember_token' => Str::random(10),
-        ]);
-
-
-        return response()->json([
-            'status' => Response::HTTP_CREATED,
-            'message' => 'User Registered Success',
-            'data' => [
-                'user' => $user,
-            ]
-        ], Response::HTTP_CREATED);
     }
 
     public function registerAdmin(Request $request)
     {
-        // Validasi input
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:3',
-            'username' => 'required|string|max:255|unique:users',
-        ]);
+        try{
+            // Validasi input
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:3',
+                'username' => 'required|string|max:255|unique:users',
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => Response::HTTP_BAD_REQUEST,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors(),
+                ], Response::HTTP_BAD_REQUEST);
+            }
+
+            // Buat admin baru
+            $admin = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'username' => $request->username,
+                'password' => Hash::make($request->password),
+                'role' => 'admin', // Tetapkan role sebagai admin
+                'email_verified_at' => now(),
+            ]);
+
             return response()->json([
-                'status' => Response::HTTP_BAD_REQUEST,
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], Response::HTTP_BAD_REQUEST);
+                'status' => Response::HTTP_CREATED,
+                'message' => 'Admin created successfully',
+                'data' => $admin,
+            ], Response::HTTP_CREATED);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Database error: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'An error occurred during registration: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        // Buat admin baru
-        $admin = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'username' => $request->username,
-            'password' => Hash::make($request->password),
-            'role' => 'admin', // Tetapkan role sebagai admin
-            'email_verified_at' => now(),
-        ]);
-
-        return response()->json([
-            'status' => Response::HTTP_CREATED,
-            'message' => 'Admin created successfully',
-            'data' => $admin,
-        ], Response::HTTP_CREATED);
     }
 
     public function showProfile()
@@ -175,25 +212,32 @@ class AuthController extends Controller
 
     public function editProfile(Request $request)
     {
-        $userId = Auth::id();  // Mengambil ID pengguna yang login
+        try{
+            $userId = Auth::id();  // Mengambil ID pengguna yang login
 
-        // Validasi input
-        $validated = $request->validate([
-            'username' => 'sometimes|string|max:255|unique:users,username,' . $userId,
-            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $userId,
-        ]);
+            // Validasi input
+            $validated = $request->validate([
+                'username' => 'sometimes|string|max:255|unique:users,username,' . $userId,
+                'email' => 'sometimes|string|email|max:255|unique:users,email,' . $userId,
+            ]);
 
-        // Mendapatkan user yang sedang login
-        $user = User::findOrFail($userId);
+            // Mendapatkan user yang sedang login
+            $user = User::findOrFail($userId);
 
-        // Update data user
-        $user->update($validated); // Menggunakan data yang sudah tervalidasi
+            // Update data user
+            $user->update($validated); // Menggunakan data yang sudah tervalidasi
 
-        // Respon sukses
-        return response()->json([
-            'status' => Response::HTTP_OK,
-            'message' => 'Profile updated successfully',
-            'data' => $user, // Mengembalikan user yang sudah diperbarui
-        ]);
+            // Respon sukses
+            return response()->json([
+                'status' => Response::HTTP_OK,
+                'message' => 'Profile updated successfully',
+                'data' => $user, // Mengembalikan user yang sudah diperbarui
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'An error occurred while updating the profile: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }
