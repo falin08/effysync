@@ -85,12 +85,9 @@ class DashboardController extends Controller
                 return [
                     'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
                     'total_pakan' => $item->total_pakan ?? 0,
+                    'bulan' => now()->translatedFormat('F'),  // Nama bulan sekarang
                 ];
             });
-        return response()->json([
-            'bulan' => now()->translatedFormat('F'),  // Nama bulan sekarang
-            'data' => $pakanPerBulan,
-        ]);
 
         // Response Data
         return response()->json([
