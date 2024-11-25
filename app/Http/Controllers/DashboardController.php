@@ -7,6 +7,7 @@ use App\Models\Pakan;
 use App\Models\Kandang;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -73,19 +74,38 @@ class DashboardController extends Controller
 
         // 6. Pakan Digunakan Per Bulan Berdasarkan Jenis
         $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
-        ->whereMonth('laporan_harians.created_at', now()->month)
-        ->select(
-            DB::raw('LOWER(pakans.jenis) as jenis_lowercase'), 
-            DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan')
-        )
-        ->groupBy('jenis_lowercase')
-        ->get()
-        ->map(function ($item) {
-            return [
-                'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
-                'total_pakan' => $item->total_pakan ?? 0,
-            ];
-        });
+            ->select(
+                DB::raw('pakans.jenis as jenis'), 
+                DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan'),
+                DB::raw('MONTH(laporan_harians.created_at) as bulan'),
+                DB::raw('YEAR(laporan_harians.created_at) as tahun')
+            )
+            ->groupBy('pakans.jenis', 'bulan', 'tahun')  // Grouping berdasarkan jenis pakan, bulan, dan tahun
+            ->orderBy('tahun', 'desc')  // Urutkan berdasarkan tahun
+            ->orderBy('bulan', 'asc')   // Urutkan berdasarkan bulan
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'jenis' => ucfirst($item->jenis), // Mengubah huruf pertama jadi kapital
+                    'total_pakan' => $item->total_pakan ?? 0, // Jika tidak ada data, anggap 0
+                    'bulan' => Carbon::createFromFormat('m', $item->bulan)->translatedFormat('F'), // Menampilkan nama bulan
+                    'tahun' => $item->tahun,
+                ];
+            });
+        // $pakanPerBulan = LaporanHarian::join('pakans', 'laporan_harians.id_pakan', '=', 'pakans.id')
+        // ->whereMonth('laporan_harians.created_at', now()->month)
+        // ->select(
+        //     DB::raw('LOWER(pakans.jenis) as jenis_lowercase'), 
+        //     DB::raw('SUM(laporan_harians.jumlah_pakan) as total_pakan')
+        // )
+        // ->groupBy('jenis_lowercase')
+        // ->get()
+        // ->map(function ($item) {
+        //     return [
+        //         'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
+        //         'total_pakan' => $item->total_pakan ?? 0,
+        //     ];
+        // });
 
         // Response Data
         return response()->json([
