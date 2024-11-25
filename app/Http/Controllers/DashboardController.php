@@ -85,7 +85,6 @@ class DashboardController extends Controller
                 return [
                     'jenis' => ucfirst($item->jenis_lowercase), // Memformat jenis pakan dengan huruf besar di awal
                     'total_pakan' => $item->total_pakan ?? 0,
-                    'bulan' => now()->translatedFormat('F'),  // Nama bulan sekarang
                 ];
             });
 
@@ -99,6 +98,7 @@ class DashboardController extends Controller
                 'diagram_pakan' => $dataPakan,
                 'recent_laporan' => $recentLaporan,
                 'pakan_per_bulan' => $pakanPerBulan,
+                'bulan' => now()->translatedFormat('F'),  // Nama bulan sekarang
             ],
         ], Response::HTTP_OK);
     }
