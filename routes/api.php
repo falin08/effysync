@@ -12,10 +12,12 @@ use App\Http\Middleware\CorsMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::middleware([CorsMiddleware::class])->group(function () {
+    Route::post('login', [AuthController::class, 'login'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
     Route::post('/check-email', [AuthController::class, 'checkEmail'])->name('checkEmail');
     Route::post('/register', [AuthController::class, 'register'])->name('api.register');
     Route::post('/registerAdmin', [AuthController::class, 'registerAdmin'])->name('api.register.admin');
-    Route::post('/login', [AuthController::class, 'login'])->middleware('guest')->name('api.login');
+    // Route::post('/login', [AuthController::class, 'login'])->middleware('guest')->name('api.login');
     Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum')->name('api.logout');
     Route::post('/edit-profile', [AuthController::class, 'editProfile'])->middleware('auth:sanctum')->name('api.edit.profile');
     Route::get('/profile', [AuthController::class, 'showProfile'])->middleware('auth:sanctum')->name('api.profile');
