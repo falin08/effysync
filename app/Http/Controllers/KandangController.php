@@ -103,7 +103,7 @@ class KandangController extends Controller
             if ($request['status'] === 'tidak aktif') {
                 $kandang->status = 'tidak aktif';
                 // Konversi waktu UTC ke Asia/Jakarta
-                $kandang->deactivated_at = now()->timezone('Asia/Jakarta');
+                $kandang->deactivated_at = now();
             } else {
                 $kandang->status = 'aktif';
                 $kandang->deactivated_at = null;
